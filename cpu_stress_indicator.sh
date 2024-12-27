@@ -1,19 +1,25 @@
 #!/bin/bash
 
 while true; do
-  cpu_usage=$(top -bn1 | grep "Cpu(s):" | awk '{usage=100-$NF; printf "%.2f\n",usage}')
+  # Read CPU usage from /proc/stat
+  old_idle=$(grep 'cpu ' /proc/stat | awk '{print $5}')
+  old_total=$(grep 'cpu ' /proc/stat | awk '{print $5+$4+$2+$3}')
+  sleep 1
+  new_idle=$(grep 'cpu ' /proc/stat | awk '{print $5}')
+  new_total=$(grep 'cpu ' /proc/stat | awk '{print $5+$4+$2+$3}')
+  # Calculate CPU usage
+  cpu_usage=$(( 100 - ( ( new_idle - old_idle ) * 100 / ( new_total - old_total ) ) ))
 
-  if (( $(echo "$cpu_usage > 75" | bc -l) )); then
+  # Check CPU usage and print corresponding state
+  if (( cpu_usage > 75 )); then
     echo "Stressed"
-  elif (( $(echo "$cpu_usage < 25" | bc -l) )); then
+  elif (( cpu_usage < 25 )); then
     echo "Relaxed"
-  elif (( $(echo "$cpu_usage >= 45 && $cpu_usage <= 65" | bc -l) )); then
+  elif (( cpu_usage >= 45 && cpu_usage <= 65 )); then
     echo "Okay"
-  elif (( $(echo "$cpu_usage > 65 && $cpu_usage <= 75" | bc -l) )); then
+  elif (( cpu_usage > 65 && cpu_usage <= 75 )); then
     echo "Moderate Stress"
-  elif (( $(echo "$cpu_usage > 25 && $cpu_usage < 45" | bc -l) )); then
+  elif (( cpu_usage > 25 && cpu_usage < 45 )); then
     echo "Moderate Relax"
   fi
-
-  sleep 1
 done
